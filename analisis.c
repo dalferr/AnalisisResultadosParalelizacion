@@ -97,6 +97,33 @@ void procesarArchivo(const char *filename, int **arrayEnteros, int *numEnteros, 
   *numColumnas = cols;
 }
 
+
+void mostrarResultados(int *procs, double **matriz, int numFilas, int numColumnas) {
+
+  double tserie;
+
+  // Encabezados
+  printf("#procs runtime   speedup  efficiency\n");
+  printf("#===== ======= ======= ==========\n");
+
+  //Obtenemos los datos necesarios
+  for (int i = 0; i < numFilas; i++) {
+    double sumaRuntime = 0.0; 
+    for (int u = 0; u < numColumnas; u++){
+      sumaRuntime = sumaRuntime + matriz[i][u];
+    }
+    double runtime = sumaRuntime / numColumnas;
+    if (i == 0){
+      tserie = runtime;
+    }
+    double speedup = tserie / runtime;
+    double efficiency = speedup / procs[i];
+
+    //Imprimimos los resultados
+    printf("%5d %9.6f %8.6f %9.6f\n", procs[i], runtime, speedup, efficiency);
+  }
+}
+
 /* Función main de ejemplo para demostrar el uso de procesarArchivo */
 int main(int argc, char* argv[]) {
 
@@ -111,29 +138,9 @@ int main(int argc, char* argv[]) {
 
   procesarArchivo(argv[1], &primerosEnteros, &numEnteros, &matriz, &numFilas, &numColumnas);
 
-  // Muestra el array de enteros (primer número de cada fila).
-  printf("Array de enteros (primer número de cada fila):\n");
-  for (int i = 0; i < numEnteros; i++) {
-    printf("%d ", primerosEnteros[i]);
-  }
-  printf("\n\n");
 
-  // Muestra la matriz de doubles (resto de los datos) usando notación mat[fila][columna].
-  printf("Matriz de doubles:\n");
-  for (int i = 0; i < numFilas; i++) {
-    for (int j = 0; j < numColumnas; j++) {
-      printf("%.2f ", matriz[i][j]);
-    }
-    printf("\n");
-  }
+  mostrarResultados(primerosEnteros, matriz, numFilas, numColumnas);
 
-  printf("\n\n");
-
-  //Prueba sitio especifico
-  printf("Posición 0,0: %.2f\n", matriz[0][0]);
-  printf("Posición 1,1: %.2f\n", matriz[1][1]);
-  printf("Posición 2,2: %.2f\n", matriz[2][2]);
-  printf("Posición 3,3: %.2f\n", matriz[3][3]);
 
   // Liberamos la memoria asignada.
   free(primerosEnteros);
