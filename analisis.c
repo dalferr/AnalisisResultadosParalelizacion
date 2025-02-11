@@ -98,7 +98,12 @@ void procesarArchivo(const char *filename, int **arrayEnteros, int *numEnteros, 
 }
 
 
-void mostrarResultados(int *procs, double **matriz, int numFilas, int numColumnas) {
+void mostrarResultados(int *procs, double **matriz, int numFilas, int numColumnas, double **runtimes, double **speedups, double **efficiencies) {
+
+  // Reservamos memoria para los resultados
+  *runtimes = (double *)malloc(numFilas * sizeof(double));
+  *speedups = (double *)malloc(numFilas * sizeof(double));
+  *efficiencies = (double *)malloc(numFilas * sizeof(double));
 
   double tserie;
 
@@ -106,7 +111,7 @@ void mostrarResultados(int *procs, double **matriz, int numFilas, int numColumna
   printf("#procs runtime   speedup  efficiency\n");
   printf("#===== ======= ======= ==========\n");
 
-  //Obtenemos los datos necesarios
+  // Obtenemos los datos necesarios
   for (int i = 0; i < numFilas; i++) {
     double sumaRuntime = 0.0; 
     for (int u = 0; u < numColumnas; u++){
@@ -119,12 +124,63 @@ void mostrarResultados(int *procs, double **matriz, int numFilas, int numColumna
     double speedup = tserie / runtime;
     double efficiency = speedup / procs[i];
 
-    //Imprimimos los resultados
+    // Guardamos los valores en memoria
+    (*runtimes)[i] = runtime;
+    (*speedups)[i] = speedup;
+    (*efficiencies)[i] = efficiency;
+
+    // Imprimimos los resultados
     printf("%5d %9.6f %8.6f %9.6f\n", procs[i], runtime, speedup, efficiency);
   }
 }
 
-/* Función main de ejemplo para demostrar el uso de procesarArchivo */
+
+
+void generarGraficos(int *procs, double *runtimes, double *speedups, double *efficiencies, int numFilas) {
+  FILE *gnuplotPipe = popen("gnuplot -persistent", "w");
+  if (!gnuplotPipe) {
+    perror("Error al abrir GNUplot");
+    exit(1);
+  }
+
+  fprintf(gnuplotPipe, "set terminal png size 800,300\n");
+
+  // Gráfico de Runtime
+  fprintf(gnuplotPipe, "set output 'runtime.png'\n");
+  fprintf(gnuplotPipe, "set title 'Exec. time'\n");
+  fprintf(gnuplotPipe, "set xlabel 'Processors'\n");
+  fprintf(gnuplotPipe, "set ylabel 'Runtime (ms)'\n");
+  fprintf(gnuplotPipe, "plot '-' using 1:2 with linespoints title 'Runtime'\n");
+
+  for (int i = 0; i < numFilas; i++) {
+    fprintf(gnuplotPipe, "%d %lf\n", procs[i], runtimes[i]);
+  }
+  fprintf(gnuplotPipe, "e\n");
+
+  // Gráfico de Speedup y Eficiencia
+  fprintf(gnuplotPipe, "set output 'speedup_efficiency.png'\n");
+  fprintf(gnuplotPipe, "set title 'Speed Up and Efficiency'\n");
+  fprintf(gnuplotPipe, "set xlabel 'Processors'\n");
+  fprintf(gnuplotPipe, "set ylabel 'Speed Up'\n");
+  fprintf(gnuplotPipe, "set y2label 'Efficiency'\n");
+  fprintf(gnuplotPipe, "set y2tics\n");
+  fprintf(gnuplotPipe, "set logscale x\n");
+  fprintf(gnuplotPipe, "plot '-' using 1:2 with linespoints title 'Speed Up' axis x1y1, '-' using 1:2 with linespoints title 'Efficiency' axis x1y2\n");
+
+  for (int i = 0; i < numFilas; i++) {
+    fprintf(gnuplotPipe, "%d %lf\n", procs[i], speedups[i]);
+  }
+  fprintf(gnuplotPipe, "e\n");
+
+  for (int i = 0; i < numFilas; i++) {
+    fprintf(gnuplotPipe, "%d %lf\n", procs[i], efficiencies[i]);
+  }
+  fprintf(gnuplotPipe, "e\n");
+
+  pclose(gnuplotPipe);
+}
+
+
 int main(int argc, char* argv[]) {
 
   if (argc != 2){
@@ -135,19 +191,21 @@ int main(int argc, char* argv[]) {
   int *primerosEnteros;
   double **matriz;
   int numFilas, numColumnas, numEnteros;
+  double *runtimes, *speedups, *efficiencies;
 
   procesarArchivo(argv[1], &primerosEnteros, &numEnteros, &matriz, &numFilas, &numColumnas);
 
+  mostrarResultados(primerosEnteros, matriz, numFilas, numColumnas, &runtimes, &speedups, &efficiencies);
 
-  mostrarResultados(primerosEnteros, matriz, numFilas, numColumnas);
+  generarGraficos(primerosEnteros, runtimes, speedups, efficiencies, numFilas);
 
-
-  // Liberamos la memoria asignada.
+ // Liberamos la memoria dinamica
   free(primerosEnteros);
-  // Primero liberamos el bloque contiguo de datos.
   free(matriz[0]);
-  // Luego liberamos el array de punteros de filas.
   free(matriz);
+  free(runtimes);
+  free(speedups);
+  free(efficiencies);
 
   return 0;
 }
